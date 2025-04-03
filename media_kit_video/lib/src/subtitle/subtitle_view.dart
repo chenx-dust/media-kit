@@ -5,6 +5,7 @@
 /// Use of this source code is governed by MIT license that can be found in the LICENSE file.
 import 'dart:async';
 import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/material.dart';
 
 import 'package:media_kit_video/src/video_controller/video_controller.dart';
@@ -24,11 +25,17 @@ class SubtitleView extends StatefulWidget {
   /// The configuration to be used for the subtitles.
   final SubtitleViewConfiguration configuration;
 
+  final bool enableDragSubtitle;
+
+  final ValueChanged<EdgeInsets>? onUpdatePadding;
+
   /// {@macro subtitle_view}
   const SubtitleView({
     super.key,
     required this.controller,
     required this.configuration,
+    this.enableDragSubtitle = false,
+    this.onUpdatePadding,
   });
 
   @override
@@ -81,6 +88,12 @@ class SubtitleViewState extends State<SubtitleView> {
     });
   }
 
+  @override
+  void didUpdateWidget(SubtitleView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    padding = widget.configuration.padding;
+  }
+
   /// {@macro subtitle_view}
   @override
   Widget build(BuildContext context) {
@@ -104,31 +117,44 @@ class SubtitleViewState extends State<SubtitleView> {
               textAlign: widget.configuration.textAlign,
               textScaler: textScaler,
             );
-        return Material(
-          color: Colors.transparent,
-          child: AnimatedContainer(
-            padding: padding,
-            duration: duration,
-            alignment: Alignment.bottomCenter,
-            child: widget.configuration.strokeWidth != null
-                ? Stack(
-                    clipBehavior: Clip.none,
-                    children: [
-                      text(
-                        widget.configuration.style.copyWith(
-                          color: null,
-                          background: null,
-                          foreground: Paint()
-                            ..color = Colors.black
-                            ..style = PaintingStyle.stroke
-                            ..strokeWidth = widget.configuration.strokeWidth!,
-                        ),
-                      ),
-                      text(widget.configuration.style),
-                    ],
-                  )
-                : text(widget.configuration.style),
-          ),
+        Widget subtitleView() => widget.configuration.strokeWidth != null
+            ? Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  text(
+                    widget.configuration.style.copyWith(
+                      color: null,
+                      background: null,
+                      backgroundColor: null,
+                      foreground: Paint()
+                        ..color = Colors.black
+                        ..style = PaintingStyle.stroke
+                        ..strokeWidth = widget.configuration.strokeWidth!,
+                    ),
+                  ),
+                  text(widget.configuration.style),
+                ],
+              )
+            : text(widget.configuration.style);
+        return AnimatedContainer(
+          margin: padding,
+          duration: duration,
+          alignment: Alignment.bottomCenter,
+          child: widget.enableDragSubtitle
+              ? GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onVerticalDragUpdate: (details) {
+                    double bottom =
+                        clampDouble(padding.bottom - details.delta.dy, 0, 200);
+                    padding = padding.copyWith(bottom: bottom);
+                    setState(() {});
+                  },
+                  onVerticalDragEnd: (details) {
+                    widget.onUpdatePadding?.call(padding);
+                  },
+                  child: subtitleView(),
+                )
+              : subtitleView(),
         );
       },
     );
@@ -181,4 +207,22 @@ class SubtitleViewConfiguration {
     ),
     this.strokeWidth,
   });
+
+  SubtitleViewConfiguration copyWith({
+    bool? visible,
+    TextStyle? style,
+    TextAlign? textAlign,
+    TextScaler? textScaler,
+    EdgeInsets? padding,
+    double? strokeWidth,
+  }) {
+    return SubtitleViewConfiguration(
+      visible: visible ?? this.visible,
+      style: style ?? this.style,
+      textAlign: textAlign ?? this.textAlign,
+      textScaler: textScaler ?? this.textScaler,
+      padding: padding ?? this.padding,
+      strokeWidth: strokeWidth ?? this.strokeWidth,
+    );
+  }
 }
