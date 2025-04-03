@@ -117,6 +117,12 @@ class Video extends StatefulWidget {
   /// FocusNode for keyboard input.
   final FocusNode? focusNode;
 
+  /// Whether to enable dragging the subtitle.
+  final bool enableDragSubtitle;
+
+  /// Callback to update the padding of the subtitle.
+  final ValueChanged<EdgeInsets>? onUpdatePadding;
+
   /// {@macro video}
   const Video({
     super.key,
@@ -136,6 +142,8 @@ class Video extends StatefulWidget {
     this.onEnterFullscreen = defaultEnterNativeFullscreen,
     this.onExitFullscreen = defaultExitNativeFullscreen,
     this.focusNode,
+    this.enableDragSubtitle = false,
+    this.onUpdatePadding,
   });
 
   @override
@@ -463,16 +471,23 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
                     !(widget.controller.player.platform?.configuration.libass ??
                         false))
                   Positioned.fill(
-                    child: SubtitleView(
-                      controller: widget.controller,
-                      key: _subtitleViewKey,
-                      configuration:
-                          videoViewParameters.subtitleViewConfiguration,
+                    child: IgnorePointer(
+                      ignoring: !widget.enableDragSubtitle,
+                      child: SubtitleView(
+                        controller: widget.controller,
+                        key: _subtitleViewKey,
+                        configuration:
+                            videoViewParameters.subtitleViewConfiguration,
+                        enableDragSubtitle: widget.enableDragSubtitle,
+                        onUpdatePadding: (padding) {
+                          widget.onUpdatePadding?.call(padding);
+                          update(
+                              subtitleViewConfiguration: videoViewParameters
+                                  .subtitleViewConfiguration
+                                  .copyWith(padding: padding));
+                        },
+                      ),
                     ),
-                  ),
-                if (videoViewParameters.controls != null)
-                  Positioned.fill(
-                    child: videoViewParameters.controls!.call(this),
                   ),
               ],
             ),
