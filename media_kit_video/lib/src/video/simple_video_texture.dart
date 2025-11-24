@@ -103,6 +103,7 @@ class SimpleVideoState extends State<SimpleVideo> {
                                 handle: id,
                                 width: rect.width.toInt(),
                                 height: rect.height.toInt(),
+                                useHCPP: notifier.configuration.useHCPP,
                               )
                             : Texture(
                                 textureId: id,
