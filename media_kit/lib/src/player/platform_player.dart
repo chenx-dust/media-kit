@@ -526,7 +526,7 @@ class PlayerConfiguration {
     this.libass = false,
     this.libassAndroidFont,
     this.libassAndroidFontName,
-    this.logLevel = MPVLogLevel.error,
+    this.logLevel = MPVLogLevel.v,
     this.bufferSize = 32 * 1024 * 1024,
     this.protocolWhitelist = const [
       'udp',
