@@ -26,6 +26,7 @@ class _SinglePlayerSingleVideoScreenState
   void initState() {
     super.initState();
     player.open(Media(sources[0]));
+    player.stream.log.listen((log) => debugPrint('[${log.level}] ${log.prefix}: ${log.text}'));
     player.stream.error.listen((error) => debugPrint(error));
   }
 
