@@ -58,10 +58,10 @@ task downloadDependencies(type: Exec) {
 
         // Download all *.jar dependencies & verify their MD5 checksums.
         def filesToDownload = [
-            ["url": "https://github.com/My-Responsitories/libmpv-android-video-build/releases/download/vnext/default-arm64-v8a.jar", "destination": file("$buildDir/v1.1.5/default-arm64-v8a.jar")],
-            ["url": "https://github.com/My-Responsitories/libmpv-android-video-build/releases/download/vnext/default-armeabi-v7a.jar", "destination": file("$buildDir/v1.1.5/default-armeabi-v7a.jar")],
-            ["url": "https://github.com/My-Responsitories/libmpv-android-video-build/releases/download/vnext/default-x86_64.jar", "destination": file("$buildDir/v1.1.5/default-x86_64.jar")],
-            ["url": "https://github.com/My-Responsitories/libmpv-android-video-build/releases/download/vnext/default-x86.jar", "destination": file("$buildDir/v1.1.5/default-x86.jar")]
+            ["url": "https://github.com/chenx-dust/libmpv-android-video-build/releases/download/vnext/default-arm64-v8a.jar", "destination": file("$buildDir/vnext/default-arm64-v8a.jar")],
+            ["url": "https://github.com/chenx-dust/libmpv-android-video-build/releases/download/vnext/default-armeabi-v7a.jar", "destination": file("$buildDir/vnext/default-armeabi-v7a.jar")],
+            ["url": "https://github.com/chenx-dust/libmpv-android-video-build/releases/download/vnext/default-x86_64.jar", "destination": file("$buildDir/vnext/default-x86_64.jar")],
+            ["url": "https://github.com/chenx-dust/libmpv-android-video-build/releases/download/vnext/default-x86.jar", "destination": file("$buildDir/vnext/default-x86.jar")]
         ]
 
         filesToDownload.each { fileInfo ->
