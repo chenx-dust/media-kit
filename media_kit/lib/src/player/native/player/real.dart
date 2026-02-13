@@ -183,13 +183,18 @@ class NativePlayer extends PlatformPlayer {
         // The loadlist command does not support this by default, yielding "Refusing to load potentially unsafe URL from a playlist."
         // So, we fallback to loading each file individually.
         for (int i = 0; i < playlist.length; i++) {
-          await _command(
-            [
+          if (playlist[i].extras case final extras?) {
+            await _command([
               'loadfile',
               _sanitizeUri(playlist[i].uri),
               'append',
-            ],
-          );
+              '0',
+              extras.entries.map((e) => '${e.key}=${e.value}').join(','),
+            ]);
+          } else {
+            await _command(
+                ['loadfile', _sanitizeUri(playlist[i].uri), 'append']);
+          }
         }
       } else {
         final file = await TempFile.create();
