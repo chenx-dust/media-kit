@@ -178,45 +178,18 @@ class NativePlayer extends PlatformPlayer {
       // Enter paused state.
       await _setPropertyFlag('pause', true);
 
-      if (playlist.any((media) => media.uri.startsWith('fd://'))) {
-        // The fd:// scheme is used to reference content:// URIs on Android.
-        // The loadlist command does not support this by default, yielding "Refusing to load potentially unsafe URL from a playlist."
-        // So, we fallback to loading each file individually.
-        for (int i = 0; i < playlist.length; i++) {
-          if (playlist[i].extras case final extras?) {
-            await _command([
-              'loadfile',
-              _sanitizeUri(playlist[i].uri),
-              'append',
-              '0',
-              extras.entries.map((e) => '${e.key}=${e.value}').join(','),
-            ]);
-          } else {
-            await _command(
-                ['loadfile', _sanitizeUri(playlist[i].uri), 'append']);
-          }
-        }
-      } else {
-        final file = await TempFile.create();
-        final buffer = StringBuffer();
-        for (final media in playlist) {
-          buffer.writeln(_sanitizeUri(media.uri));
-        }
-        final list = buffer.toString();
-
-        await file.write_(list);
-
-        await _command(
-          [
-            'loadlist',
-            file.path,
+      for (int i = 0; i < playlist.length; i++) {
+        if (playlist[i].extras case final extras?) {
+          await _command([
+            'loadfile',
+            _sanitizeUri(playlist[i].uri),
             'append',
-          ],
-        );
-
-        Future.delayed(const Duration(seconds: 5), () {
-          file.delete_();
-        });
+            '0',
+            extras.entries.map((e) => '${e.key}=${e.value}').join(','),
+          ]);
+        } else {
+          await _command(['loadfile', _sanitizeUri(playlist[i].uri), 'append']);
+        }
       }
 
       // If [play] is `true`, then exit paused state.
