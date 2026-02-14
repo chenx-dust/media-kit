@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:media_kit_video/media_kit_video.dart';
+import 'package:media_kit_video/src/video/platform_view_video.dart';
 
 class SimpleVideo extends StatefulWidget {
   final Color fill;
@@ -94,9 +96,19 @@ class SimpleVideoState extends State<SimpleVideo> {
                     height: rect.height / _devicePixelRatio,
                     child: Stack(
                       children: [
-                        Texture(
-                          textureId: id,
-                          filterQuality: widget.filterQuality,
+                        Positioned.fill(
+                          child: Platform.isAndroid &&
+                                  notifier.configuration.usePlatformView
+                              ? PlatformViewVideo(
+                                  handle: id,
+                                  width: rect.width.toInt(),
+                                  height: rect.height.toInt(),
+                                  useHCPP: notifier.configuration.useHCPP,
+                                )
+                              : Texture(
+                                  textureId: id,
+                                  filterQuality: widget.filterQuality,
+                                ),
                         ),
                         if (rect.width <= 1.0 && rect.height <= 1.0)
                           Positioned.fill(

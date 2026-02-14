@@ -21,7 +21,10 @@ import io.flutter.plugin.common.MethodCall;
 import io.flutter.plugin.common.MethodChannel;
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler;
 import io.flutter.plugin.common.MethodChannel.Result;
+import io.flutter.plugin.platform.PlatformViewRegistry;
 import io.flutter.view.TextureRegistry;
+
+import com.alexmercerind.media_kit_video.platformview.PlatformVideoViewFactory;
 
 /**
  * MediaKitVideoPlugin
@@ -76,6 +79,12 @@ public class MediaKitVideoPlugin implements FlutterPlugin, MethodCallHandler, Ac
             textureRegistry = flutterPluginBinding.getTextureRegistry();
 
             channel.setMethodCallHandler(this);
+
+            PlatformViewRegistry registry = flutterPluginBinding.getPlatformViewRegistry();
+            registry.registerViewFactory(
+                    "com.alexmercerind/media_kit_video_platform_view",
+                    new PlatformVideoViewFactory(channel)
+            );
 
             if (videoOutputManager == null) {
                 if (MediaKitVideoPlugin.activity != null && channel != null && textureRegistry != null) {

@@ -106,15 +106,17 @@ class AndroidVideoController extends PlatformVideoController {
 
             // Create a new android.view.Surface & obtain object reference to it.
             // NOTE: Previous android.view.Surface & object reference is internally released/destroyed by the method.
-            final data = await _channel.invokeMethod(
-              'VideoOutputManager.CreateSurface',
-              {
-                'handle': handle.toString(),
-              },
-            );
-            debugPrint(data.toString());
-            // Save the android.view.Surface object reference for usage inside player.stream.videoParams.listen.
-            _wid = data['wid'];
+            if (!configuration.usePlatformView) {
+              final data = await _channel.invokeMethod(
+                'VideoOutputManager.CreateSurface',
+                {
+                  'handle': handle.toString(),
+                },
+              );
+              debugPrint(data.toString());
+              // Save the android.view.Surface object reference for usage inside player.stream.videoParams.listen.
+              _wid = data['wid'];
+            }
           }
 
           // By default, android.view.Surface has a size of 1x1. If we assign --wid here, libmpv will internally start rendering & the first frame will be drawn as a solid color: https://github.com/media-kit/media-kit/issues/339
@@ -123,7 +125,7 @@ class AndroidVideoController extends PlatformVideoController {
           // Assign --wid here if --vo is not "gpu" or "null" i.e. custom vo/hwdec was passed through [VideoControllerConfiguration].
           try {
             // ----------------------------------------------
-            if (!androidAttachSurfaceAfterVideoParameters) {
+            if (!androidAttachSurfaceAfterVideoParameters && !configuration.usePlatformView) {
               final values = {
                 // NOTE: ORDER IS IMPORTANT.
                 'wid': _wid.toString(),
@@ -190,8 +192,7 @@ class AndroidVideoController extends PlatformVideoController {
     _subscription = player.stream.videoParams.listen(
       (event) => _lock.synchronized(() async {
         if ([0, null].contains(event.dw) ||
-            [0, null].contains(event.dh) ||
-            _wid == null) {
+            [0, null].contains(event.dh)) {
           return;
         }
 
@@ -212,7 +213,7 @@ class AndroidVideoController extends PlatformVideoController {
           NativeLibrary.ensureInitialized();
           final mpv = MPV(DynamicLibrary.open(NativeLibrary.path));
 
-          if (vo == 'gpu') {
+          if (vo == 'gpu' && !configuration.usePlatformView) {
             // NOTE: Only required for --vo=gpu
             // With --vo=gpu, we need to update the android.graphics.SurfaceTexture size & notify libmpv to re-create vo.
             // In native Android, this kind of rendering is done with android.view.SurfaceView + android.view.SurfaceHolder, which offers onSurfaceChanged to handle this.
@@ -296,15 +297,16 @@ class AndroidVideoController extends PlatformVideoController {
     // Store the [VideoController] in the [_controllers].
     _controllers[handle] = controller;
 
-    final data = await _channel.invokeMethod(
-      'VideoOutputManager.Create',
-      {
-        'handle': handle.toString(),
-      },
-    );
-    debugPrint(data.toString());
-
-    controller._id = data['id'];
+    if (!configuration.usePlatformView) {
+      final data = await _channel.invokeMethod(
+        'VideoOutputManager.Create',
+        {
+          'handle': handle.toString(),
+        },
+      );
+      debugPrint(data.toString());
+      controller._id = data['id'];
+    }
 
     // ----------------------------------------------
     NativeLibrary.ensureInitialized();
@@ -346,7 +348,11 @@ class AndroidVideoController extends PlatformVideoController {
     }
     // ----------------------------------------------
 
-    controller.id.value = controller._id;
+    if (configuration.usePlatformView) {
+      controller.id.value = handle;
+    } else {
+      controller.id.value = controller._id;
+    }
 
     // Return the [PlatformVideoController].
     return controller;
@@ -375,12 +381,14 @@ class AndroidVideoController extends PlatformVideoController {
     // Release the native resources.
     final handle = await player.handle;
     _controllers.remove(handle);
-    await _channel.invokeMethod(
-      'VideoOutputManager.Dispose',
-      {
-        'handle': handle.toString(),
-      },
-    );
+    if (!configuration.usePlatformView) {
+      await _channel.invokeMethod(
+        'VideoOutputManager.Dispose',
+        {
+          'handle': handle.toString(),
+        },
+      );
+    }
   }
 
   /// Texture ID returned by Flutter's texture registry.
@@ -417,6 +425,39 @@ class AndroidVideoController extends PlatformVideoController {
                         ?.waitUntilFirstFrameRenderedCompleter;
                     if (!(completer?.isCompleted ?? true)) {
                       completer?.complete();
+                    }
+                    break;
+                  }
+                case 'PlatformVideoView.SurfaceAvailable':
+                  {
+                    // Notify about PlatformView Surface availability.
+                    final int handle = call.arguments['handle'];
+                    final int wid = call.arguments['wid'];
+                    final controller = _controllers[handle];
+                    if (controller != null && wid != 0) {
+                      controller._wid = wid;
+                      NativeLibrary.ensureInitialized();
+                      final mpv = MPV(DynamicLibrary.open(NativeLibrary.path));
+                      final values = {
+                        // NOTE: ORDER IS IMPORTANT.
+                        'android-surface-size': [
+                          controller.rect.value?.width ?? 1,
+                          controller.rect.value?.height ?? 1
+                        ].join('x'),
+                        'wid': wid.toString(),
+                        'vo': controller.vo,
+                      };
+                      for (final entry in values.entries) {
+                        final name = entry.key.toNativeUtf8();
+                        final value = entry.value.toNativeUtf8();
+                        mpv.mpv_set_option_string(
+                          Pointer.fromAddress(handle),
+                          name.cast(),
+                          value.cast(),
+                        );
+                        calloc.free(name);
+                        calloc.free(value);
+                      }
                     }
                     break;
                   }
