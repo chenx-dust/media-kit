@@ -145,7 +145,6 @@ class VideoControllerConfiguration {
   VideoControllerConfiguration copyWith({
     String? vo,
     String? hwdec,
-    double? scale,
     int? width,
     int? height,
     bool? enableHardwareAcceleration,
@@ -156,7 +155,6 @@ class VideoControllerConfiguration {
       VideoControllerConfiguration(
         vo: vo ?? this.vo,
         hwdec: hwdec ?? this.hwdec,
-        scale: scale ?? this.scale,
         width: width ?? this.width,
         height: height ?? this.height,
         enableHardwareAcceleration:
