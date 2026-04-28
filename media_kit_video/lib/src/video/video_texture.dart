@@ -17,6 +17,7 @@ import 'package:media_kit_video/src/utils/dispose_safe_notifer.dart';
 import 'package:media_kit_video/src/utils/wakelock.dart';
 import 'package:media_kit_video/src/video_view_parameters.dart';
 import 'package:media_kit_video/src/video_controller/video_controller.dart';
+import 'package:media_kit_video/src/video/platform_view_video.dart';
 
 /// {@template video}
 ///
@@ -438,7 +439,21 @@ class VideoState extends State<Video> with WidgetsBindingObserver {
                                         children: [
                                           const SizedBox(),
                                           Positioned.fill(
-                                            child: Texture(
+                                            child: Platform.isAndroid &&
+                                                widget.controller
+                                                    .configuration
+                                                    .usePlatformView
+                                            ? PlatformViewVideo(
+                                                handle: id,
+                                                width: rect.width
+                                                    .toInt(),
+                                                height: rect.height
+                                                    .toInt(),
+                                                useHCPP: widget.controller
+                                                    .configuration
+                                                    .useHCPP,
+                                              )
+                                            : Texture(
                                               textureId: id,
                                               filterQuality: videoViewParameters
                                                   .filterQuality,

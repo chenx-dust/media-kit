@@ -103,7 +103,7 @@ class AndroidVideoController extends PlatformVideoController {
         // Assign --wid here if --vo is not "gpu" or "null" i.e. custom vo/hwdec was passed through [VideoControllerConfiguration].
         try {
           // ----------------------------------------------
-          if (!androidAttachSurfaceAfterVideoParameters) {
+          if (!androidAttachSurfaceAfterVideoParameters && !configuration.usePlatformView) {
             player.setOption('wid', _wid.toString());
             player.setOption('vo', vo);
           }
@@ -136,8 +136,7 @@ class AndroidVideoController extends PlatformVideoController {
     _subscription = player.stream.videoParams.listen(
       (event) => _lock.synchronized(() async {
         if (const [0, null].contains(event.dw) ||
-            const [0, null].contains(event.dh) ||
-            _wid == null) {
+            const [0, null].contains(event.dh)) {
           return;
         }
 
@@ -154,7 +153,7 @@ class AndroidVideoController extends PlatformVideoController {
 
         rect.value = Rect.zero;
         try {
-          if (vo == 'gpu') {
+          if (vo == 'gpu' && !configuration.usePlatformView) {
             // NOTE: Only required for --vo=gpu
             // With --vo=gpu, we need to update the android.graphics.SurfaceTexture size & notify libmpv to re-create vo.
             // In native Android, this kind of rendering is done with android.view.SurfaceView + android.view.SurfaceHolder, which offers onSurfaceChanged to handle this.
@@ -206,12 +205,18 @@ class AndroidVideoController extends PlatformVideoController {
     // Store the [VideoController] in the [_controllers].
     _controllers[handle] = controller;
 
-    final data = await _channel.invokeMethod('VideoOutputManager.Create', {
-      'handle': handle.toString(),
-    });
-    debugPrint(data.toString());
+    final int? id;
 
-    final int? id = data['id'];
+    if (!configuration.usePlatformView) {
+      final data = await _channel.invokeMethod('VideoOutputManager.Create', {
+        'handle': handle.toString(),
+      });
+      debugPrint(data.toString());
+
+      id = data['id'];
+    } else {
+      id = handle;
+    }
 
     // ----------------------------------------------
 
@@ -266,9 +271,11 @@ class AndroidVideoController extends PlatformVideoController {
     // Release the native resources.
     final handle = player.handle;
     _controllers.remove(handle);
-    await _channel.invokeMethod('VideoOutputManager.Dispose', {
-      'handle': handle.toString(),
-    });
+    if (!configuration.usePlatformView) {
+      await _channel.invokeMethod('VideoOutputManager.Dispose', {
+        'handle': handle.toString(),
+      });
+    }
   }
 
   /// Pointer address to the global object reference of `android.view.Surface` i.e. `(intptr_t)(*android.view.Surface)`.
@@ -305,6 +312,22 @@ class AndroidVideoController extends PlatformVideoController {
                 }
                 break;
               }
+          case 'PlatformVideoView.SurfaceAvailable':
+            {
+              // Notify about PlatformView Surface availability.
+              final int handle = call.arguments['handle'];
+              final int wid = call.arguments['wid'];
+              final controller = _controllers[handle];
+              if (controller != null && wid != 0) {
+                controller._wid = wid;
+                final player = controller.player;
+                final rect = controller.rect.value ?? Rect.fromLTWH(0, 0, 1, 1);
+                player.setOption('android-surface-size', '${rect.width.toInt()}x${rect.height.toInt()}');
+                player.setOption('wid', wid.toString());
+                player.setOption('vo', controller.vo);
+              }
+              break;
+            }
             default:
               {
                 break;
